@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>跑步隨機播放器</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; background: #121212; color: white; padding: 20px; }
+        .container { max-width: 400px; margin: auto; padding: 20px; background: #1e1e1e; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        audio { width: 100%; margin-top: 20px; }
+        button { background: #1db954; color: white; border: none; padding: 14px 28px; font-size: 18px; border-radius: 20px; cursor: pointer; margin-top: 15px; font-weight: bold; }
+        button:hover { background: #1ed760; }
+        .song-title { font-size: 18px; font-weight: bold; margin-top: 15px; color: #1db954; word-break: break-all; }
+    </style>
+    <!-- 載入外部播放清單 -->
+    <script src="playlist.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h2>🏃 跑步音樂播放器</h2>
+        <div class="song-title" id="songTitle">點擊下方按鈕開始</div>
+        <audio id="audioPlayer" preload="auto"></audio>
+        <br>
+        <button id="startBtn" onclick="startPlay()">▶ 開始播放 (隨機)</button>
+        <button id="nextBtn" onclick="playNextSong()" style="display:none; background:#333;">下一首</button>
+    </div>
+
+    <script>
+        let shuffledPlaylist = [];
+        let currentIndex = 0;
+        const player = document.getElementById("audioPlayer");
+        const title = document.getElementById("songTitle");
+        const startBtn = document.getElementById("startBtn");
+        const nextBtn = document.getElementById("nextBtn");
+
+        function shuffle(array) {
+            let shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        function startPlay() {
+            if (typeof playlist === "undefined" || playlist.length === 0) {
+                alert("找不到播放清單，請確認是否有執行 generate_playlist.bat 並產生 playlist.js");
+                return;
+            }
+            shuffledPlaylist = shuffle(playlist);
+            currentIndex = 0;
+            loadAndPlay(currentIndex);
+            startBtn.style.display = "none";
+            nextBtn.style.display = "inline-block";
+        }
+
+        function loadAndPlay(index) {
+            const songPath = shuffledPlaylist[index];
+            player.src = songPath;
+            
+            // 顯示檔名（移除 songs/ 路徑標示）
+            const cleanTitle = songPath.replace("songs/", "");
+            title.textContent = cleanTitle;
+            
+            updateMediaSession(cleanTitle);
+            player.play().catch(err => console.log("播放失敗:", err));
+        }
+
+        function playNextSong() {
+            currentIndex++;
+            if (currentIndex >= shuffledPlaylist.length) {
+                shuffledPlaylist = shuffle(playlist);
+                currentIndex = 0;
+            }
+            loadAndPlay(currentIndex);
+        }
+
+        function updateMediaSession(songTitle) {
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.metadata = new MediaMetadata({
+                    title: songTitle,
+                    artist: '跑步音樂播放器',
+                    album: 'Running Playlist'
+                });
+
+                navigator.mediaSession.setActionHandler('play', () => player.play());
+                navigator.mediaSession.setActionHandler('pause', () => player.pause());
+                navigator.mediaSession.setActionHandler('nexttrack', () => playNextSong());
+            }
+        }
+
+        player.addEventListener("ended", playNextSong);
+    </script>
+</body>
+</html>
